@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>资讯详情 · V.L.A NEWS</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&family=Noto+Sans+SC:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg:        #0a0e1a;
+    --panel:     #0f1524;
+    --panel-2:   #131a2c;
+    --line:      #1a2030;
+    --line-2:    #232b40;
+    --text:      #e5e9f0;
+    --text-dim:  #7a8ba8;
+    --text-mute: #4a5878;
+    --accent:    #00d9a3;
+    --accent-dim:#00d9a322;
+    --warn:      #ff8c42;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', 'Noto Sans SC', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+.mono { font-family: 'JetBrains Mono', monospace; }
+a { color: inherit; }
+
+/* ============ 顶栏 ============ */
+.topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    height: 56px;
+    padding: 0 24px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+}
+.logo {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    white-space: nowrap;
+    text-decoration: none;
+}
+.logo span { color: var(--text-mute); font-weight: 400; }
+.btn-back {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 1px solid var(--line-2);
+    border-radius: 4px;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 13px;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.btn-back:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ============ 版面 ============
+   正文 + 右侧栏。右栏在窄屏隐藏（和首页一致）。 */
+.wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 32px 24px 72px;
+}
+.read-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 40px;
+    align-items: start;
+}
+.read-main { min-width: 0; }
+.read-side { padding-top: 6px; }
+.side-panel { margin-bottom: 28px; }
+.side-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--text-mute);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.article-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--warn);
+    border: 1px solid rgba(255, 140, 66, 0.35);
+    border-radius: 3px;
+    padding: 3px 9px;
+    margin-bottom: 14px;
+}
+.article-title {
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1.3;
+    margin-bottom: 14px;
+}
+.article-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-mute);
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 26px;
+}
+.article-meta .sep { opacity: 0.4; }
+.article-meta .tag {
+    padding: 1px 6px;
+    border-radius: 2px;
+    background: var(--panel-2);
+    color: var(--text-dim);
+}
+.article-body p {
+    font-size: 15px;
+    line-height: 1.9;
+    color: #c9d2e2;
+    margin-bottom: 18px;
+}
+.article-body p:first-of-type {
+    font-size: 16px;
+    color: var(--text);
+}
+.article-body h2 {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 28px 0 12px;
+    padding-left: 10px;
+    border-left: 3px solid var(--accent);
+}
+.placeholder-note {
+    margin-top: 34px;
+    padding: 12px 14px;
+    border: 1px dashed var(--line-2);
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--text-mute);
+    line-height: 1.7;
+}
+.article-foot {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* ============ 右栏面板（与首页同一套标记） ============ */
+.rank-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+}
+.rank-row:last-child { border-bottom: none; }
+.rank-row:hover .rank-name { color: var(--accent); }
+.rank-num {
+    width: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-mute);
+    flex-shrink: 0;
+}
+.rank-num.r1 { color: var(--gold); }
+.rank-num.r2 { color: var(--silver); }
+.rank-num.r3 { color: var(--bronze); }
+.rank-name {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 600;
+    transition: color 0.15s;
+}
+.rank-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+}
+.panel-empty { font-size: 12px; color: var(--text-mute); padding: 4px 0; }
+.panel-switch { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.switch-btn {
+    padding: 3px 9px;
+    font-size: 10.5px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.04em;
+    border: 1px solid var(--line-2);
+    border-radius: 3px;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.switch-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+/* 冠军榜的滚动窗口：固定高度，内容不足则下方留空 */
+.rank-scroll {
+    height: 268px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 4px;
+    -webkit-overflow-scrolling: touch;
+}
+.rank-scroll::-webkit-scrollbar { width: 6px; }
+.rank-scroll::-webkit-scrollbar-track { background: transparent; }
+.rank-scroll::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 3px; }
+.rank-scroll::-webkit-scrollbar-thumb:hover { background: var(--text-mute); }
+
+.recent-scroll {
+    max-height: 232px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 4px;
+    -webkit-overflow-scrolling: touch;
+}
+/* 只有内容真的溢出时才做底部渐隐（由 panels.js 判断后挂 .has-overflow） */
+.rank-scroll.has-overflow,
+.recent-scroll.has-overflow {
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 18px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 18px), transparent 100%);
+}
+.recent-scroll::-webkit-scrollbar { width: 6px; }
+.recent-scroll::-webkit-scrollbar-track { background: transparent; }
+.recent-scroll::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 3px; }
+.recent-scroll::-webkit-scrollbar-thumb:hover { background: var(--text-mute); }
+.recent-hint {
+    margin-top: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-mute);
+    letter-spacing: 0.06em;
+    text-align: center;
+}
+.recent-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    font-size: 12px;
+    border-bottom: 1px solid var(--line);
+}
+.recent-row:last-child { border-bottom: none; }
+.recent-year {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-mute);
+    font-size: 11px;
+    width: 38px;
+    flex-shrink: 0;
+}
+.recent-team { flex: 1; font-weight: 600; }
+.recent-type {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 2px;
+    background: var(--panel-2);
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+}
+.heat-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 12px; }
+.heat-name { width: 40px; flex-shrink: 0; color: var(--text-dim); }
+.heat-bar { flex: 1; height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
+.heat-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #00b389); border-radius: 3px; }
+.heat-pct {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-mute);
+    width: 32px;
+    text-align: right;
+    flex-shrink: 0;
+}
+/* 热度加载中：数字位置显示 —，避免先闪一组临时值 */
+.heat-loading .heat-pct { opacity: 0.5; }
+.heat-loading .heat-fill { opacity: 0; }
+
+/* ============ 开屏动画 ============ */
+.splash {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: #05080f;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+.splash.is-leaving { opacity: 0; visibility: hidden; }
+.splash-bg {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 50% 42%, rgba(0, 217, 163, 0.10), transparent 58%),
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.022) 0 1px, transparent 1px 4px);
+}
+.splash-inner { position: relative; text-align: center; padding: 0 24px; max-width: 720px; }
+.splash-kicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    color: var(--text-mute);
+    margin-bottom: 14px;
+    animation: splash-up 0.5s both;
+}
+.splash-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text);
+    text-shadow: 0 0 34px rgba(0, 217, 163, 0.35);
+    animation: splash-up 0.6s 0.1s both;
+}
+.splash-title span { color: var(--accent); }
+.splash-bar {
+    width: 180px;
+    height: 2px;
+    margin: 18px auto 0;
+    background: var(--line-2);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.splash-bar i {
+    display: block;
+    width: 0;
+    height: 100%;
+    background: var(--accent);
+    animation: splash-load 0.9s 0.2s linear forwards;
+}
+.splash-skip {
+    position: absolute;
+    top: 22px;
+    right: 24px;
+    padding: 5px 13px;
+    border: 1px solid var(--line-2);
+    border-radius: 3px;
+    background: transparent;
+    color: var(--text-mute);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.splash-skip:hover { border-color: var(--accent); color: var(--accent); }
+@keyframes splash-up {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes splash-load {
+    from { width: 0; }
+    to   { width: 100%; }
+}
+/* 窄屏：收起右栏，正文占满（与首页在窄屏隐藏侧栏的做法一致） */
+@media (max-width: 1024px) {
+    .read-grid { grid-template-columns: 1fr; gap: 0; }
+    .read-side { display: none; }
+    .wrap { max-width: 820px; }
+}
+@media (max-width: 640px) {
+    .wrap { padding: 22px 16px 56px; }
+    .article-title { font-size: 23px; }
+    .article-body p { font-size: 14.5px; }
+    .topbar { padding: 0 14px; gap: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .splash-kicker, .splash-title, .splash-bar i {
+        animation-duration: 0.01s;
+        animation-delay: 0s;
+    }
+}
+</style>
+</head>
+<body>
+
+<!-- 开屏播报（详情页短版） -->
+<div class="splash" id="splash">
+    <div class="splash-bg"></div>
+    <button class="splash-skip" id="splash-skip" type="button">跳过 SKIP</button>
+    <div class="splash-inner">
+        <div class="splash-kicker">V.L.A NEWS · 转录中</div>
+        <div class="splash-title">载入报道 <span id="splash-dots">···</span></div>
+        <div class="splash-bar"><i></i></div>
+    </div>
+</div>
+
+<!-- 顶栏 -->
+<div class="topbar">
+    <a href="index.html" class="logo">V.L.A <span>NEWS</span></a>
+    <a href="index.html" class="btn-back">← 返回资讯流</a>
+</div>
+
+<!-- 正文 + 右栏 -->
+<main class="wrap">
+    <div class="read-grid">
+        <div class="read-main">
+            <div id="detail">
+                <div class="article-tag" id="d-tag">加载中</div>
+                <h1 class="article-title" id="d-title">正在读取报道…</h1>
+                <div class="article-meta" id="d-meta"></div>
+                <div class="article-body" id="d-body"></div>
+            </div>
+        </div>
+
+        <!-- 右栏：与首页同一套面板，标记也一致 -->
+        <aside class="read-side">
+            <div class="side-panel">
+                <div class="side-title">📊 冠军榜</div>
+                <div id="panel-rank"></div>
+            </div>
+            <div class="side-panel">
+                <div class="side-title">🔥 近期夺冠</div>
+                <div id="panel-recent"></div>
+            </div>
+            <div class="side-panel">
+                <div class="side-title">📈 联赛热度</div>
+                <div id="panel-heat"></div>
+            </div>
+        </aside>
+    </div>
+</main>
+
+<script src="data.js"></script>
+<script src="stats.js"></script>
+<script src="panels.js"></script>
+<script>
+(function () {
+    var splash = document.getElementById('splash');
+
+    /* ---- 开屏（详情页短版，1.1 秒，每次打开都播） ---- */
+    var params = new URLSearchParams(location.search);
+
+    if (params.get('intro') === '0') {
+        if (splash) splash.remove();
+    } else if (splash) {
+        var revealed = false;
+        var reveal = function () {
+            if (revealed) return;
+            revealed = true;
+            splash.classList.add('is-leaving');
+            window.setTimeout(function () { splash.remove(); }, 550);
+        };
+        window.setTimeout(reveal, 1100);
+        splash.addEventListener('click', reveal);
+        document.addEventListener('keydown', reveal);
+    }
+
+    /* ---- 工具 ---- */
+    function esc(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    /* 正文分段：兼容 \n\n（Unix）、\r\n\r\n（Windows）、中间夹空格的情况。
+       段落内部的单个换行渲染成 <br>，双换行才是新段落。 */
+    function paragraphs(text) {
+        return String(text || '').split(/\r?\n[ \t]*\r?\n/).filter(function (p) {
+            return p.trim();
+        }).map(function (p) {
+            return '<p>' + esc(p.trim()).replace(/\r?\n/g, '<br>') + '</p>';
+        }).join('');
+    }
+
+    /* ---- 取 slug ----
+       slug 只在数据层用于取文章，不显示在开屏上（对读者没有意义）。 */
+    var slug = params.get('slug') || params.get('id') || '';
+
+    /* 开屏上的省略号做一点动静，表示正在读取 */
+    var dotsEl = document.getElementById('splash-dots');
+    if (dotsEl) {
+        var frames = ['···', '·', '··'];
+        var dotSteps = 0;
+        var dotTimer = window.setInterval(function () {
+            dotSteps = (dotSteps + 1) % frames.length;
+            dotsEl.textContent = frames[dotSteps];
+            /* 开屏被移除后自动停掉，避免无谓的空转 */
+            if (!document.body || !document.body.contains(dotsEl)) window.clearInterval(dotTimer);
+        }, 220);
+    }
+
+    var host = document.getElementById('detail');
+
+    function fail(msg) {
+        host.innerHTML =
+            '<div class="article-tag">404</div>' +
+            '<h1 class="article-title">找不到这篇报道</h1>' +
+            '<div class="article-meta"><span class="mono">' + esc(msg) + '</span></div>' +
+            '<div class="article-body"><p>链接可能已经失效，或者这篇文章还没转录进档案。</p></div>' +
+            '<div class="article-foot"><a class="btn-back" href="index.html">← 返回资讯流</a></div>';
+    }
+
+    if (!slug) { fail('缺少 slug 参数'); return; }
+
+    VLA.getArticle(slug).then(function (a) {
+        if (!a) { fail('slug = ' + slug); return; }
+
+        document.title = a.title + ' · V.L.A NEWS';
+        document.getElementById('d-tag').textContent = (a.tag || '资讯');
+        document.getElementById('d-title').textContent = a.title;
+
+        var meta = [];
+        if (a.date)   meta.push('<span>' + esc(a.date) + '</span>');
+        if (a.league) meta.push('<span class="sep">·</span><span>' + esc(a.league) + '</span>');
+        if (a.tag)    meta.push('<span class="sep">·</span><span class="tag">' + esc(a.tag) + '</span>');
+        if (a.author) meta.push('<span class="sep">·</span><span>' + esc(a.author) + '</span>');
+        document.getElementById('d-meta').innerHTML = meta.join('');
+
+        var body = a.body || a.summary || '';
+        document.getElementById('d-body').innerHTML = paragraphs(body);
+
+        if (VLA.source() === 'fallback') {
+            var note = document.createElement('div');
+            note.className = 'placeholder-note';
+            note.innerHTML = '当前显示的是页面内置的示例正文 —— 数据层 <span class="mono">data.js</span> ' +
+                '还没连上 Supabase（未配置项目地址或网络不可达）。连上之后，这里会自动显示数据库里的完整正文。';
+            host.appendChild(note);
+        }
+
+        var foot = document.createElement('div');
+        foot.className = 'article-foot';
+        foot.innerHTML = '<a class="btn-back" href="index.html">← 返回资讯流</a>';
+        host.appendChild(foot);
+    }).catch(function (err) {
+        fail(String(err && err.message ? err.message : err));
+    });
+
+    /* ---- 右栏：与首页共用同一套面板与统计 ---- */
+    if (window.VLAPanels) {
+        VLA.listTitles().then(function (rows) {
+            VLAPanels.render({
+                rank: document.getElementById('panel-rank'),
+                recent: document.getElementById('panel-recent'),
+                heat: document.getElementById('panel-heat')
+            }, rows || []);
+        }).catch(function () {
+            VLAPanels.render({
+                rank: document.getElementById('panel-rank'),
+                recent: document.getElementById('panel-recent'),
+                heat: document.getElementById('panel-heat')
+            }, []);
+        });
+    }
+})();
+</script>
+
+</body>
+</html>
