@@ -355,6 +355,31 @@ html, body {
     margin-bottom: 10px;
 }
 
+/* 头条组与普通组之间的分隔线 */
+.feed-divider {
+    position: relative;
+    margin: 20px 0 14px;
+    text-align: center;
+}
+.feed-divider::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; top: 50%;
+    height: 1px;
+    background: var(--line-2);
+}
+.feed-divider span {
+    position: relative;
+    display: inline-block;
+    padding: 0 12px;
+    background: var(--bg);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    color: var(--text-mute);
+    text-transform: uppercase;
+}
+
 /* 空状态 */
 .empty-state {
     padding: 40px 20px;
@@ -903,16 +928,15 @@ html, body {
         }).join('');
     }
 
-    /* 首页头条：只认显式标了 hero 的文章，取其中日期最新的那篇。
-       没标头条的普通文章，无论多新都只按普通卡片显示。
-       返回 null 表示当前没有头条。 */
-    function pickHero(rows) {
-        var best = null;
+    /* 把文章分成两组：头条组 / 普通组，各自按日期新→旧。
+       rows 进来时已经按日期倒序，所以用 filter 即可保持组内顺序。 */
+    function splitHeroes(rows) {
+        var heroes = [], plains = [];
         rows.forEach(function (a) {
-            if (a.hero !== true) return;
-            if (!best || String(a.date || '') > String(best.date || '')) best = a;
+            if (a.hero === true) heroes.push(a);
+            else plains.push(a);
         });
-        return best;
+        return { heroes: heroes, plains: plains };
     }
 
     function render() {
@@ -925,23 +949,39 @@ html, body {
             html = '<div class="empty-state">' + esc(what) + '还没有资讯' +
                    '<span class="mono">' + esc(hint) + '</span></div>';
         } else if (!activeLeague && activeTag === '全部') {
-            /* 首页全量视图：把「头条」放最上面用大卡，其余按原顺序排。
-               头条由文章的 hero 标记决定，不能因为"它最新"就自动变成头条。 */
-            var hero = pickHero(rows);
-            if (hero) {
-                html += cardHtml(hero);
-                /* 用 slug 比对，避免"同一篇文章被渲染两遍"
-                   （pickHero 返回的对象不保证和 rows 里是同一个引用） */
-                rows.forEach(function (a) {
-                    if (a.slug !== hero.slug) html += cardHtml(a);
-                });
-            } else {
-                /* 没有头条时，全部按普通卡片显示（不硬造一个大卡） */
-                rows.forEach(function (a) { html += cardHtml(a); });
+            /* 首页资讯流的分组规则：
+                 · 头条组：所有标了 hero 的文章，按发布顺序新→旧，全部置顶
+                 · 普通组：其余文章，按发布顺序新→旧
+               头条组的第一篇（最新的那篇）用大卡，其余头条用普通卡片，
+               保证视觉上有一个重点，但所有头条都在普通文章之前。 */
+            var g = splitHeroes(rows);
+            g.heroes.forEach(function (a, i) {
+                if (i === 0) {
+                    /* 最新的头条：大卡 */
+                    html += cardHtml(a);
+                } else {
+                    /* 其余头条：准用普通卡片版式，但仍留在头条组里 */
+                    html += cardHtml({
+                        slug: a.slug, title: a.title, summary: a.summary, date: a.date,
+                        league: a.league, tag: a.tag, author: a.author, hero: false
+                    });
+                }
+            });
+            if (g.heroes.length && g.plains.length) {
+                html += '<div class="feed-divider"><span>以下为全部资讯</span></div>';
             }
+            g.plains.forEach(function (a) { html += cardHtml(a); });
+        } else if (!rows.some(function (a) { return a.hero === true; })) {
+            /* 筛选视图里如果没有头条，统一小卡 */
+            rows.forEach(function (a) { html += cardHtml(a); });
         } else {
-            /* 筛选视图下不用头条大卡，统一小卡更整齐 */
-            rows.forEach(function (a) {
+            /* 筛选视图：头条在前，但统一用小卡（避免大卡占满一屏） */
+            var sg = splitHeroes(rows);
+            sg.heroes.forEach(function (a) {
+                html += cardHtml({ slug: a.slug, title: a.title, summary: a.summary, date: a.date,
+                                   league: a.league, tag: a.tag, author: a.author, hero: false });
+            });
+            sg.plains.forEach(function (a) {
                 html += cardHtml({ slug: a.slug, title: a.title, summary: a.summary, date: a.date,
                                    league: a.league, tag: a.tag, author: a.author, hero: false });
             });
@@ -955,12 +995,20 @@ html, body {
                 (activeTag !== '全部' ? activeTag + ' · ' : '') + rows.length + ' 条';
         }
 
-        /* 开屏只展示真正的头条；没有头条时显示最近更新 */
+        /* 开屏：头条组里按顺序列出（最多 3 条），没有头条时显示最新一篇 */
         if (splash && !introDone) {
             var note = document.getElementById('splash-note');
             if (note && all.length) {
-                var h = pickHero(all);
-                note.textContent = h ? ('头条 · ' + h.title) : ('最新 · ' + all[0].title);
+                var hs = splitHeroes(all).heroes;
+                if (hs.length === 1) {
+                    note.textContent = '头条 · ' + hs[0].title;
+                } else if (hs.length > 1) {
+                    note.textContent = '头条 ' + hs.length + ' 篇 · ' +
+                        hs.slice(0, 3).map(function (a) { return a.title; }).join(' / ') +
+                        (hs.length > 3 ? ' …' : '');
+                } else {
+                    note.textContent = '最新 · ' + all[0].title;
+                }
             }
         }
     }
