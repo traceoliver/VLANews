@@ -903,6 +903,18 @@ html, body {
         }).join('');
     }
 
+    /* 首页头条：只认显式标了 hero 的文章，取其中日期最新的那篇。
+       没标头条的普通文章，无论多新都只按普通卡片显示。
+       返回 null 表示当前没有头条。 */
+    function pickHero(rows) {
+        var best = null;
+        rows.forEach(function (a) {
+            if (a.hero !== true) return;
+            if (!best || String(a.date || '') > String(best.date || '')) best = a;
+        });
+        return best;
+    }
+
     function render() {
         var rows = visibleRows();
 
@@ -913,9 +925,20 @@ html, body {
             html = '<div class="empty-state">' + esc(what) + '还没有资讯' +
                    '<span class="mono">' + esc(hint) + '</span></div>';
         } else if (!activeLeague && activeTag === '全部') {
-            /* 首页全量视图：第一篇用头条大卡 */
-            html += cardHtml(rows[0]);
-            for (var i = 1; i < rows.length; i++) html += cardHtml(rows[i]);
+            /* 首页全量视图：把「头条」放最上面用大卡，其余按原顺序排。
+               头条由文章的 hero 标记决定，不能因为"它最新"就自动变成头条。 */
+            var hero = pickHero(rows);
+            if (hero) {
+                html += cardHtml(hero);
+                /* 用 slug 比对，避免"同一篇文章被渲染两遍"
+                   （pickHero 返回的对象不保证和 rows 里是同一个引用） */
+                rows.forEach(function (a) {
+                    if (a.slug !== hero.slug) html += cardHtml(a);
+                });
+            } else {
+                /* 没有头条时，全部按普通卡片显示（不硬造一个大卡） */
+                rows.forEach(function (a) { html += cardHtml(a); });
+            }
         } else {
             /* 筛选视图下不用头条大卡，统一小卡更整齐 */
             rows.forEach(function (a) {
@@ -932,9 +955,13 @@ html, body {
                 (activeTag !== '全部' ? activeTag + ' · ' : '') + rows.length + ' 条';
         }
 
+        /* 开屏只展示真正的头条；没有头条时显示最近更新 */
         if (splash && !introDone) {
             var note = document.getElementById('splash-note');
-            if (note && all.length) note.textContent = '头条 · ' + all[0].title;
+            if (note && all.length) {
+                var h = pickHero(all);
+                note.textContent = h ? ('头条 · ' + h.title) : ('最新 · ' + all[0].title);
+            }
         }
     }
 
