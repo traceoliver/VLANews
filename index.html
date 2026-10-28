@@ -792,8 +792,11 @@ html, body {
         return out || ('post-' + Date.now().toString(36));
     }
 
-    var TAG_LABEL = { '世冠': '⚡ 世冠', '联赛': '🏆 联赛', '杯赛': '🥇 杯赛', '里程碑': '🚩 里程碑' };
-    function tagLabel(t) { return TAG_LABEL[t] || (t ? '· ' + t : '资讯'); }
+    /* 分类（世冠 / 联赛 / 杯赛 / 里程碑 / 流言板）不需要在这里维护：
+       筛选按钮由文章数据里实际出现的 tag 自动生成，
+       所以新增分类只要在发稿台的下拉里选、或直接写进数据即可。
+       下面这个数组只决定按钮的排列顺序（不在这里的分类会被排到末尾）。 */
+    var TAG_ORDER = ['世冠', '联赛', '杯赛', '里程碑', '流言板'];
 
     /* ---------- 归一化：兼容 Supabase 返回的行 ---------- */
     function normal(r, i) {
@@ -851,7 +854,7 @@ html, body {
     var panelRecent = document.getElementById('panel-recent');
     var panelHeat = document.getElementById('panel-heat');
     var statCheers = document.getElementById('stat-cheers');
-    var activeTag = '全部';       /* 分类筛选：世冠 / 联赛 / 杯赛 / 里程碑 */
+    var activeTag = '全部';       /* 分类筛选：全部 / 世冠 / 联赛 / 杯赛 / 里程碑 / 流言板 */
     var activeLeague = '';        /* 顶栏联赛筛选：空 = 首页（全部内容） */
     var titles = [];              /* 冠军记录，右栏统计用 */
 
@@ -892,6 +895,14 @@ html, body {
         var tags = [];
         pool.forEach(function (a) {
             if (a.tag && tags.indexOf(a.tag) === -1) tags.push(a.tag);
+        });
+        /* 按固定顺序排列（世冠→联赛→杯赛→里程碑→流言板），
+           这样按钮位置不会因为发稿顺序而变化；未知分类排在最后。 */
+        tags.sort(function (a, b) {
+            var ia = TAG_ORDER.indexOf(a), ib = TAG_ORDER.indexOf(b);
+            if (ia === -1) ia = 99;
+            if (ib === -1) ib = 99;
+            return ia - ib;
         });
         /* "全部" 放在最前面，符合常规习惯 */
         if (pool.length) tags.unshift('全部');
